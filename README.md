@@ -1,6 +1,6 @@
-# RecallMatch ⚕️
+# Reclaro ⚕️
 
-**RecallMatch** is an engineering platform that identifies potentially affected medical devices in hospital inventory datasets when an FDA medical-device recall notice is issued.
+**Reclaro** is an engineering platform that identifies potentially affected medical devices in hospital inventory datasets when an FDA medical-device recall notice is issued.
 
 It fetches live recall notices directly from the public openFDA Device Recall API (`https://api.fda.gov/device/recall.json`), parses the scope parameters, normalizes inventory fields, and evaluates records using a **Deterministic Verification Engine**.
 
