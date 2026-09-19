@@ -1,0 +1,31 @@
+case_id,manufacturer,product_name,model,catalog_number,lot_number,serial_number,expected_status,case_type,notes
+B01,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,LOT-2023-A,SN-1001,AFFECTED,exact_positive,Exact manufacturer + exact catalog + lot present; baseline and Reclaro both confirm
+B02,Cardio Systems,Spectrum IQ Infusion Pump,Spectrum IQ,74021210,,SN-1002,AFFECTED,exact_positive,Manufacturer alias (no Inc.) + first catalog in range
+B03,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021229,,SN-1003,AFFECTED,exact_positive,Last catalog in range
+B04,Cardio Systems,Spectrum IQ Infusion Pump,Spectrum IQ,74021218,LOT-2024-B,,AFFECTED,exact_positive,Manufacturer alias + catalog mid-range
+B05,CARDIO SYSTEMS INC,Spectrum IQ Pump,,74021212,,SN-1005,AFFECTED,catalog_format_diff,ALL CAPS manufacturer no model - baseline substring match still finds it; catalog exact
+B06,Cardio Systems Inc.,Infusion Pump Unit,,74021-212,LOT-X,SN-1006,AFFECTED,catalog_format_diff,Catalog with hyphen (74021-212) and NO model field - RECLARO normalizes; baseline misses this
+B07,Cardio Systems Inc.,Infusion Pump,,74021-215,,SN-1007,AFFECTED,catalog_format_diff,Hyphenated catalog + no model - Reclaro normalizes to find catalog; baseline does not
+B08,Smith & Nephew,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,,SN-1008,NOT_AFFECTED,wrong_manufacturer,Wrong manufacturer with correct catalog and model - mfr gate blocks
+B09,Cardio Systems Medical,Infusion Pump,,74021215,,SN-1009,AFFECTED,mfr_alias,Manufacturer with Medical suffix - Reclaro normalizer strips it; baseline must also do substring
+B10,Cardio Systems Inc.,Infusion Pump,,,,SN-1010,AFFECTED,ambiguous_no_ids,Mfr matches + product family token (infusion pump) matches but NO catalog and NO model - Reclaro flags NEEDS_REVIEW; baseline cannot confirm without catalog or model
+B11,Cardio Systems Corporation,Spectrum IQ Pump,,74021214,,SN-1011,AFFECTED,mfr_format_diff,Corp suffix + no model field but catalog in range
+B12,Cardio Systems,Spectrum IQ Infusion Pump,Spectrum IQ,,,LOT-2023-A,AFFECTED,missing_catalog,No catalog - model EXACT match is sufficient for CONFIRMED with matching mfr
+B13,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021 215,,SN-1013,AFFECTED,catalog_format_diff,Catalog with internal space (74021 215) - Reclaro normalizes; baseline exact-match fails
+B14,Unknown Vendor,Generic Infusion Pump,,74021215,,SN-1014,NOT_AFFECTED,wrong_manufacturer,Unknown manufacturer - catalog matches but mfr gate blocks confirmation
+B15,Cardio Systems Inc.,Cardiac Monitor Pro,CM-300,74021217,,SN-1016,AFFECTED,catalog_collision_fp,Catalog 74021217 is in recall range and mfr matches; neither pipeline can distinguish product type from catalog alone - this is a known FP for any catalog-based system
+B16,Baxter International,Sigma Spectrum Infusion Pump,Sigma Spectrum,74021215,,SN-1017,NOT_AFFECTED,wrong_manufacturer,Different manufacturer (Baxter) - fails mfr gate regardless of catalog
+B17,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,LOT-OUTSIDE,,AFFECTED,lot_scope,Recall has ALL_LOTS scope so any lot qualifies; catalog confirms
+B18,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,,SN-2999,AFFECTED,serial_scope,ALL_SERIALS scope; catalog confirms
+B19,Cardio Systems Inc.,SpecIQ-200 Pump,SpecIQ-200,,,LOT-2023-A,NOT_AFFECTED,model_diff,Different model SpecIQ-200 not in recall scope and no catalog
+B20,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,,,SN-1021,AFFECTED,ambiguous_no_catalog,Mfr + model match sufficient for CONFIRMED even without catalog
+B21,Cardio Systems Inc.,Spectrum IQ infusion pump,Spectrum IQ,74021-219,,SN-1022,AFFECTED,catalog_format_diff,Lowercase product name + hyphenated catalog - Reclaro normalizes to match; baseline fails catalog match (no model field effect here because exact model match ALSO works for baseline)
+B22,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021300,,SN-1023,AFFECTED,model_confirms_despite_wrong_catalog,Catalog outside range but EXACT model match (Spectrum IQ) satisfies verifier Rule 1
+B23,Philips Healthcare,HeartStart MRx Defibrillator,HeartStart MRx,74021215,,SN-1024,NOT_AFFECTED,wrong_manufacturer,Completely different manufacturer - mfr gate blocks
+B24,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021209,,SN-1028,AFFECTED,model_confirms_despite_wrong_catalog,Catalog below range but model Spectrum IQ triggers CONFIRMED via Rule 1
+B25,Cardio Systems LLC,Spectrum IQ Infusion Pump,Spectrum IQ,74021216,,SN-1029,AFFECTED,mfr_llc_variant,LLC suffix stripped by Reclaro normalizer; both confirm via catalog in range
+B26,Stryker Corp,Navigation System Pro,NavPro-X,74021215,,SN-1030,NOT_AFFECTED,unrelated_device,Different manufacturer + model; catalog collision is irrelevant
+B27,cardio systems inc.,spectrum iq infusion pump,,74021211,,sn-1027,AFFECTED,all_lowercase_no_model,All lowercase input + no model - catalog match with normalized mfr
+B28,Cardio Systems Inc.,Spectrum IQ Pump - Rental,Spectrum IQ,74021213,,SN-1026,AFFECTED,product_desc_variant,Product name differs but mfr + catalog confirms match
+B29,Cardio Systems Inc.,Infusion Pump,,74021-210,,SN-1031,AFFECTED,catalog_format_diff,First catalog in range with hyphen - Reclaro normalizes; no model field so baseline must match catalog
+B30,Cardio Systems Inc.,Infusion Pump - Rental,,740,,SN-1025,AFFECTED,ambiguous_short_catalog,Catalog too short (3 chars) to match AND no model but mfr + product family (infusion pump) - Reclaro issues NEEDS_REVIEW; baseline has no match
