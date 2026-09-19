@@ -16,12 +16,32 @@ Resources:
     Properties:
       StageName: prod
 
+  ReclaroInventoryBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
   RecallMatchFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: recallmatch-api
       CodeUri: .
       Handler: backend.aws_handler.handler
+      Environment:
+        Variables:
+          RECLARO_S3_BUCKET: !Ref ReclaroInventoryBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ReclaroInventoryBucket
+
       Events:
 
         Api:
@@ -43,3 +63,7 @@ Outputs:
   RecallMatchApiUrl:
     Description: RecallMatch API Gateway URL
     Value: !Sub "https://${RecallMatchApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  ReclaroInventoryBucketName:
+    Description: S3 bucket used for uploaded hospital inventory CSV files
+    Value: !Ref ReclaroInventoryBucket

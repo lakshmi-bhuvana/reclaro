@@ -17,6 +17,7 @@ from backend.services.fda.fda_client import OpenFDAClient
 from backend.services.recall_parser.parser import RecallParser
 from backend.services.evidence.evidence_builder import EvidenceBuilder
 from backend.services.bedrock.candidate_service import BedrockCandidateService
+from backend.services.storage.s3_storage import S3StorageService
 
 logger = logging.getLogger("recallmatch")
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,8 @@ app.add_middleware(
 
 fda_client = OpenFDAClient()
 bedrock_candidate_service = BedrockCandidateService()
+s3_storage_service = S3StorageService()
+
 
 
 
@@ -80,9 +83,26 @@ async def match_inventory(
 
     normalized_recall = RecallParser.parse(recall)
 
-    # 2. Read and parse uploaded CSV file
+    # 2. Read uploaded CSV file and persist to S3 storage
     try:
         contents = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid CSV file upload: {str(e)}")
+
+    try:
+        inventory_storage_key = s3_storage_service.upload_inventory_csv(
+            contents=contents,
+            filename=file.filename or "inventory.csv",
+        )
+    except Exception as e:
+        logger.error(f"S3 inventory storage failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Inventory storage service is unavailable: {str(e)}",
+        )
+
+    # 3. Parse CSV file
+    try:
         text_content = contents.decode("utf-8-sig")
         csv_reader = csv.DictReader(io.StringIO(text_content))
     except Exception as e:
@@ -124,7 +144,7 @@ async def match_inventory(
     if not inventory_items:
         raise HTTPException(status_code=400, detail="Uploaded CSV contained no valid inventory rows.")
 
-    # 3. Evaluate each item through deterministic verification engine
+    # 4. Evaluate each item through deterministic verification engine
     results: List[MatchResult] = []
     confirmed_cnt = 0
     needs_review_cnt = 0
@@ -140,7 +160,6 @@ async def match_inventory(
         match_res = EvidenceBuilder.build_match_result(item, normalized_recall, ai_signals=ai_signals)
         results.append(match_res)
 
-
         if match_res.status == MatchStatus.CONFIRMED:
             confirmed_cnt += 1
         elif match_res.status == MatchStatus.NEEDS_REVIEW:
@@ -155,5 +174,6 @@ async def match_inventory(
         confirmed_count=confirmed_cnt,
         needs_review_count=needs_review_cnt,
         not_affected_count=not_affected_cnt,
+        inventory_storage_key=inventory_storage_key,
         results=results,
     )

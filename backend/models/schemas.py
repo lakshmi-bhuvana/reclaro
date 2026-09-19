@@ -81,4 +81,5 @@ class MatchResponse(BaseModel):
     confirmed_count: int
     needs_review_count: int
     not_affected_count: int
+    inventory_storage_key: Optional[str] = None
     results: List[MatchResult]
