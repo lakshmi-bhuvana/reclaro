@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #0b0f17;
+  --color-surface: #131b2e;
+  --color-surface-hover: #1b2640;
+  --color-border: #1e293b;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-blue: #3b82f6;
+  --color-status-confirmed: #ef4444;
+  --color-status-review: #f59e0b;
+  --color-status-safe: #10b981;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+/* Custom Glassmorphism UI */
+.glass-panel {
+  background: rgba(19, 27, 46, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.glass-panel-interactive {
+  transition: all 0.2s ease-in-out;
+}
+.glass-panel-interactive:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -6px rgba(6, 182, 212, 0.15);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f17;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Status Badges */
+.badge-confirmed {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.badge-review {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.badge-safe {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+/* Code / Identifier pill */
+.code-pill {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}

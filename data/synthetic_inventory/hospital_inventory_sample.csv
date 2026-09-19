@@ -1,0 +1,15 @@
+inventory_id,manufacturer,product_name,model,catalog_number,udi_di,lot_number,serial_number,quantity,location
+INV-1001,Medtronic Inc.,Heartware Ventricular Assist System,HVAD-100,HV-100-REF,00643169876543,LOT-2023-A99,SN-884920,5,ICU West - Storage Bay 2
+INV-1002,Medtronic Inc.,Heartware Ventricular Assist Controller,HVAD-CTRL,HV-CTRL-200,00643169876544,LOT-2023-B12,SN-991204,3,Cardiovascular Surgery OR-4
+INV-1003,Abbott Laboratories,HeartMate 3 Left Ventricular Assist System,HM3-1000,HM3-CAT-10,00884992110293,LOT-HM-7788,SN-HM3-5521,2,Cardiac Care Unit 3B
+INV-1004,Abbott Medical,HeartMate Touch Communication System,HM-TOUCH,HM-T-300,00884992110300,LOT-HM-9900,SN-HM3-9912,4,Medical Equipment Central Depot
+INV-1005,Baxter Healthcare,Spectrum IQ Infusion Pump,SPEC-IQ-200,IQ-200-PUMP,00732890123456,LOT-BX-4451,SN-PUMP-1092,12,General Medical Ward - Floor 4
+INV-1006,Baxter Healthcare,Spectrum Pump Battery Pack,SPEC-BAT,IQ-BAT-50,00732890123457,LOT-BX-5599,SN-BAT-0922,25,Central Equipment Room
+INV-1007,Philips Medical Systems,HeartStart XL Defibrillator,M4735A,M4735A-OPT,00884838291029,LOT-PH-1029,SN-DEF-38910,8,Emergency Dept - Trauma Bay 1
+INV-1008,Stryker Corporation,LIFEPAK 15 Monitor/Defibrillator,LP15-DEF,99577-000001,00762819201928,LOT-ST-8812,SN-LP-44102,6,Emergency Dept - Resus Room
+INV-1009,Stryker Corporation,Physio-Control LIFEPAK Battery,LP-BAT-15,99577-000009,00762819201929,LOT-ST-9900,SN-LP-99100,15,Biomedical Engineering Storage
+INV-1010,Getinge USA,Datascope Intra-Aortic Balloon Pump,IABP-CS300,CS300-CAT,00403920192837,LOT-GT-2022,SN-CS-3891,1,Cardiothoracic Surgery OR-1
+INV-1011,Becton Dickinson (BD),Alaris System Infusion Pump Module,8100,8100-0003,00382901928374,LOT-BD-1100,SN-AL-8100-449,18,Pediatric Intensive Care Unit
+INV-1012,3M Health Care,Bair Hugger Patient Warming Unit,Model 775,77500,00511319283746,LOT-3M-5511,SN-BH-775-901,10,Post-Anesthesia Care Unit (PACU)
+INV-1013,Zoll Medical Corporation,R Series Defibrillator,R-SERIES-BLS,2010000110111,00840192837465,LOT-ZL-3321,SN-ZL-99201,4,Cardiology Outpatient Clinic
+INV-1014,General Hospital Supplies,Standard IV Pole Heavy Duty,IVP-HD,POLE-100,00112233445566,LOT-GEN-01,SN-GEN-POLE-01,50,Central Warehouse Bay A

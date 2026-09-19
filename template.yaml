@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: RecallMatch - FDA medical device recall matching backend
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 1024
+    Runtime: python3.14
+
+Resources:
+
+  RecallMatchApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+
+  RecallMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: recallmatch-api
+      CodeUri: .
+      Handler: backend.aws_handler.handler
+      Events:
+
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RecallMatchApi
+            Path: /{proxy+}
+            Method: ANY
+
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RecallMatchApi
+            Path: /
+            Method: ANY
+
+Outputs:
+
+  RecallMatchApiUrl:
+    Description: RecallMatch API Gateway URL
+    Value: !Sub "https://${RecallMatchApi}.execute-api.${AWS::Region}.amazonaws.com/prod"

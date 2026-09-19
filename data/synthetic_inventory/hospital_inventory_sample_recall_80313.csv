@@ -1,0 +1,12 @@
+inventory_id,manufacturer,product_name,model,catalog_number,udi_di,lot_number,serial_number,quantity,location
+SYN-2001,"Smith & Nephew, Inc.",JOURNEY BCS Knee CoCr Femoral Component,Journey BCS,74021210,,LOT-A100,,2,Orthopedic OR - Cabinet A
+SYN-2002,Smith and Nephew,Journey BCS knee CoCr femoral component,JOURNEY-BCS,74021211,,LOT-B220,,1,Orthopedic OR - Cabinet B
+SYN-2003,"Smith & Nephew, Inc.",JOURNEY BCS Knee CoCr Femoral Component,Journey BCS,74021-212,,LOT-C330,,1,Orthopedic OR - Review Shelf
+SYN-2004,"Smith & Nephew, Inc.",Journey BCS Knee CoCr Femoral Component,Journey BCS,,,,,1,Orthopedic OR - Unlabeled Bin
+SYN-2005,"Smith & Nephew, Inc.",Journey BCS Knee CoCr Femoral Component,Journey BCS,74021999,,LOT-D440,,1,Orthopedic OR - Cabinet C
+SYN-2006,Other Orthopedic Manufacturer,Journey BCS Knee CoCr Femoral Component,Journey BCS,74021210,,LOT-E550,,1,Orthopedic OR - Cabinet D
+SYN-2007,Medtronic Inc.,HeartWare Ventricular Assist System,HVAD,1100,,M1001,SN-M1001,1,Cardiac Device Storage
+SYN-2008,Abbott Laboratories,HeartMate 3 Left Ventricular Assist System,HeartMate 3,106524,,A2002,SN-A2002,1,Cardiac Device Storage
+SYN-2009,Baxter Healthcare,Spectrum IQ Infusion Pump,Spectrum IQ,SIGMA-800,,B3003,SN-B3003,4,Infusion Equipment Room
+SYN-2010,Stryker Corporation,LIFEPAK 15 Monitor/Defibrillator,LIFEPAK 15,3302130,,S4004,SN-S4004,1,Emergency Department
+SYN-2011,Smith & Nephew, Inc.,JOURNEY BCS Knee CoCr Femoral Component,Journey BCS,,,,,1,Orthopedic OR - Manual Review Shelf
