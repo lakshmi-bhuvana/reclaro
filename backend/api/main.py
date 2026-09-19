@@ -16,6 +16,7 @@ from backend.models.schemas import (
 from backend.services.fda.fda_client import OpenFDAClient
 from backend.services.recall_parser.parser import RecallParser
 from backend.services.evidence.evidence_builder import EvidenceBuilder
+from backend.services.bedrock.candidate_service import BedrockCandidateService
 
 logger = logging.getLogger("recallmatch")
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +37,8 @@ app.add_middleware(
 )
 
 fda_client = OpenFDAClient()
+bedrock_candidate_service = BedrockCandidateService()
+
 
 
 @app.get("/api/health")
@@ -128,8 +131,15 @@ async def match_inventory(
     not_affected_cnt = 0
 
     for item in inventory_items:
-        match_res = EvidenceBuilder.build_match_result(item, normalized_recall)
+        ai_signals = None
+        try:
+            ai_signals = bedrock_candidate_service.generate_candidate_signals(item, normalized_recall)
+        except Exception as e:
+            logger.warning(f"Bedrock candidate generation failed for item {item.inventory_id}: {e}")
+
+        match_res = EvidenceBuilder.build_match_result(item, normalized_recall, ai_signals=ai_signals)
         results.append(match_res)
+
 
         if match_res.status == MatchStatus.CONFIRMED:
             confirmed_cnt += 1

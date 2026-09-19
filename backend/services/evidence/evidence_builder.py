@@ -1,5 +1,5 @@
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from backend.models.schemas import (
     InventoryItem,
@@ -18,9 +18,10 @@ class EvidenceBuilder:
     def build_match_result(
         item: InventoryItem,
         recall: NormalizedRecall,
+        ai_signals: Optional[List[str]] = None,
     ) -> MatchResult:
-        signals = SignalGenerator.evaluate_signals(item, recall)
-        status = VerificationEngine.verify(item, recall)
+        signals = SignalGenerator.evaluate_signals(item, recall, ai_signals=ai_signals)
+        status = VerificationEngine.verify(item, recall, signals=signals)
 
         evidence, recommended_action = EvidenceBuilder._generate_explanation(
             item,
@@ -109,6 +110,10 @@ class EvidenceBuilder:
                 reasons.append(
                     "Manufacturer match confirmed"
                 )
+            elif "AI_MANUFACTURER_CANDIDATE" in signals:
+                reasons.append(
+                    "AI candidate manufacturer match"
+                )
 
             if (
                 "EXACT_MODEL_MATCH" in signals
@@ -117,6 +122,10 @@ class EvidenceBuilder:
                 reasons.append(
                     f"Model ({item.model or 'unspecified'}) "
                     f"resembles recalled scope"
+                )
+            elif "AI_MODEL_CANDIDATE" in signals:
+                reasons.append(
+                    f"AI candidate model match ({item.model or 'unspecified'})"
                 )
 
             if (
@@ -127,11 +136,20 @@ class EvidenceBuilder:
                     f"Catalog number ({item.catalog_number or 'unspecified'}) "
                     f"matches product family"
                 )
+            elif "AI_CATALOG_CANDIDATE" in signals:
+                reasons.append(
+                    f"AI candidate catalog match ({item.catalog_number or 'unspecified'})"
+                )
 
             if "PRODUCT_FAMILY_MATCH" in signals:
                 reasons.append(
                     "Product family token overlap"
                 )
+            elif "AI_PRODUCT_FAMILY_CANDIDATE" in signals:
+                reasons.append(
+                    "AI candidate product family overlap"
+                )
+
 
             evidence = (
                 f"NEEDS REVIEW: Item {item.inventory_id} "

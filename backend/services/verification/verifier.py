@@ -1,3 +1,4 @@
+from typing import List, Optional
 from backend.models.schemas import (
     InventoryItem,
     NormalizedRecall,
@@ -18,16 +19,18 @@ class VerificationEngine:
     - NOT_AFFECTED
 
     A CONFIRMED result requires deterministic evidence.
-    Semantic/fuzzy matching alone can never produce CONFIRMED.
+    Semantic/fuzzy/AI matching alone can never produce CONFIRMED.
     """
 
     @staticmethod
     def verify(
         item: InventoryItem,
         recall: NormalizedRecall,
+        signals: Optional[List[str]] = None,
     ) -> MatchStatus:
 
-        signals = SignalGenerator.evaluate_signals(item, recall)
+        if signals is None:
+            signals = SignalGenerator.evaluate_signals(item, recall)
 
         # ---------------------------------------------------------
         # Core deterministic signals
@@ -42,13 +45,16 @@ class VerificationEngine:
         serial_matched = "EXACT_SERIAL_MATCH" in signals
 
         # ---------------------------------------------------------
+        # AI candidate signals
+        # ---------------------------------------------------------
+
+        ai_mfr_candidate = "AI_MANUFACTURER_CANDIDATE" in signals
+        ai_model_candidate = "AI_MODEL_CANDIDATE" in signals
+        ai_catalog_candidate = "AI_CATALOG_CANDIDATE" in signals
+        ai_family_candidate = "AI_PRODUCT_FAMILY_CANDIDATE" in signals
+
+        # ---------------------------------------------------------
         # Recall scope
-        #
-        # If a recall does not specify a lot/serial restriction,
-        # that dimension is considered unrestricted.
-        #
-        # If a restriction exists, the corresponding deterministic
-        # match must be present before confirmation.
         # ---------------------------------------------------------
 
         lot_scope_unrestricted = (
@@ -71,9 +77,6 @@ class VerificationEngine:
 
         # ---------------------------------------------------------
         # Fuzzy / semantic candidate signals
-        #
-        # These can identify candidates but can NEVER independently
-        # produce CONFIRMED.
         # ---------------------------------------------------------
 
         fuzzy_model = "FUZZY_MODEL_MATCH" in signals
@@ -83,20 +86,12 @@ class VerificationEngine:
         # ---------------------------------------------------------
         # Rule 1: CONFIRMED
         #
-        # Manufacturer must match.
+        # Deterministic Manufacturer must match.
+        # Deterministic identifier (exact UDI, exact catalog, exact model)
+        # must match.
+        # Lot/serial scope must be satisfied.
         #
-        # Then a deterministic identifier must match:
-        #
-        #   - exact UDI
-        #   - exact catalog number
-        #   - exact model
-        #
-        # AND every applicable lot/serial restriction must be
-        # satisfied.
-        #
-        # This prevents an exact device-family match from being
-        # incorrectly confirmed when the recall is restricted to
-        # specific lots or serial numbers.
+        # AI candidate signals alone or combined can NEVER produce CONFIRMED.
         # ---------------------------------------------------------
 
         if mfr_matched:
@@ -123,36 +118,25 @@ class VerificationEngine:
         # ---------------------------------------------------------
         # Rule 2: NEEDS_REVIEW
         #
-        # There is meaningful evidence that the inventory item may
-        # belong to the recall, but deterministic proof is
-        # incomplete.
-        #
-        # Examples:
-        #   - manufacturer + product family
-        #   - manufacturer + model but restricted lot unknown
-        #   - manufacturer + catalog candidate
-        #   - fuzzy model/catalog match
-        #
-        # These must not become CONFIRMED.
+        # There is meaningful evidence (deterministic, fuzzy, or AI candidate)
+        # that the inventory item may belong to the recall, but deterministic
+        # proof is incomplete or lot/serial restriction remains unverified.
         # ---------------------------------------------------------
 
-        if mfr_matched and (
-            model_matched
-            or catalog_matched
-            or fuzzy_model
-            or fuzzy_catalog
-            or family_matched
+        any_mfr_candidate = mfr_matched or ai_mfr_candidate
+        any_model_candidate = model_matched or fuzzy_model or ai_model_candidate
+        any_catalog_candidate = catalog_matched or fuzzy_catalog or ai_catalog_candidate
+        any_family_candidate = family_matched or ai_family_candidate
+
+        if any_mfr_candidate and (
+            any_model_candidate
+            or any_catalog_candidate
+            or any_family_candidate
         ):
             return MatchStatus.NEEDS_REVIEW
 
         # ---------------------------------------------------------
         # Rule 3: NOT_AFFECTED
-        #
-        # Available evidence does not establish that the inventory
-        # item belongs to the selected recall scope.
-        #
-        # This is a screening result, not a medical/safety
-        # determination.
         # ---------------------------------------------------------
 
         return MatchStatus.NOT_AFFECTED

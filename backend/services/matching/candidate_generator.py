@@ -1,5 +1,5 @@
 
-from typing import List, Set
+from typing import List, Set, Optional
 from backend.models.schemas import InventoryItem, NormalizedRecall
 from backend.services.normalization.normalizer import TextNormalizer
 
@@ -10,9 +10,11 @@ class SignalGenerator:
     @staticmethod
     def evaluate_signals(
         item: InventoryItem,
-        recall: NormalizedRecall
+        recall: NormalizedRecall,
+        ai_signals: Optional[List[str]] = None,
     ) -> List[str]:
         signals: List[str] = []
+
 
         item_mfr = TextNormalizer.normalize_manufacturer(item.manufacturer)
         recall_mfr = TextNormalizer.normalize_manufacturer(recall.manufacturer)
@@ -114,5 +116,10 @@ class SignalGenerator:
                 if family_tokens and family_tokens.issubset(item_title_tokens):
                     signals.append("PRODUCT_FAMILY_MATCH")
                     break
+
+        if ai_signals:
+            for s in ai_signals:
+                if s not in signals:
+                    signals.append(s)
 
         return signals
