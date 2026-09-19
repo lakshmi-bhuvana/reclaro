@@ -29,6 +29,25 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  ReclaroAuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
   RecallMatchFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -38,10 +57,12 @@ Resources:
       Environment:
         Variables:
           RECLARO_S3_BUCKET: !Ref ReclaroInventoryBucket
+          RECLARO_DYNAMODB_TABLE: !Ref ReclaroAuditTable
       Policies:
         - S3WritePolicy:
             BucketName: !Ref ReclaroInventoryBucket
-
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReclaroAuditTable
       Events:
 
         Api:
@@ -67,3 +88,7 @@ Outputs:
   ReclaroInventoryBucketName:
     Description: S3 bucket used for uploaded hospital inventory CSV files
     Value: !Ref ReclaroInventoryBucket
+
+  ReclaroAuditTableName:
+    Description: DynamoDB table used for audit run persistence
+    Value: !Ref ReclaroAuditTable

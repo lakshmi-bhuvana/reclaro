@@ -18,6 +18,7 @@ from backend.services.recall_parser.parser import RecallParser
 from backend.services.evidence.evidence_builder import EvidenceBuilder
 from backend.services.bedrock.candidate_service import BedrockCandidateService
 from backend.services.storage.s3_storage import S3StorageService
+from backend.services.storage.dynamodb_storage import DynamoDBStorageService
 
 logger = logging.getLogger("recallmatch")
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +41,8 @@ app.add_middleware(
 fda_client = OpenFDAClient()
 bedrock_candidate_service = BedrockCandidateService()
 s3_storage_service = S3StorageService()
+dynamodb_storage_service = DynamoDBStorageService()
+
 
 
 
@@ -167,7 +170,27 @@ async def match_inventory(
         else:
             not_affected_cnt += 1
 
+    # 5. Persist audit run metadata and item records to DynamoDB
+    try:
+        run_id = dynamodb_storage_service.save_audit_run(
+            recall=recall,
+            normalized_recall=normalized_recall,
+            inventory_items=inventory_items,
+            match_results=results,
+            inventory_storage_key=inventory_storage_key,
+            confirmed_count=confirmed_cnt,
+            needs_review_count=needs_review_cnt,
+            not_affected_count=not_affected_cnt,
+        )
+    except Exception as e:
+        logger.error(f"DynamoDB audit persistence failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Audit storage service is unavailable: {str(e)}",
+        )
+
     return MatchResponse(
+        run_id=run_id,
         recall=recall,
         normalized_recall=normalized_recall,
         total_audited=len(inventory_items),

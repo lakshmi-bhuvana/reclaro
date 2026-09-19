@@ -75,6 +75,7 @@ class RecallSearchResponse(BaseModel):
 class MatchResponse(BaseModel):
     """API response contract for inventory recall verification audit"""
 
+    run_id: Optional[str] = None
     recall: Recall
     normalized_recall: NormalizedRecall
     total_audited: int

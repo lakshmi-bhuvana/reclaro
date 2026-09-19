@@ -23,11 +23,12 @@ def test_list_recalls_endpoint():
     assert data["recalls"][0]["recall_id"] is not None
 
 
+@patch("backend.api.main.dynamodb_storage_service.save_audit_run")
 @patch("backend.api.main.s3_storage_service.upload_inventory_csv")
-def test_match_inventory_endpoint(mock_s3_upload):
+def test_match_inventory_endpoint(mock_s3_upload, mock_db_save):
     mock_s3_upload.return_value = "inventory/uuid-1234/test_inventory.csv"
+    mock_db_save.return_value = "run-uuid-5678"
 
-    # Fetch available recall id
     recalls_res = client.get("/api/recalls?limit=1")
     recall_id = recalls_res.json()["recalls"][0]["recall_id"]
 
@@ -44,10 +45,12 @@ def test_match_inventory_endpoint(mock_s3_upload):
     assert response.status_code == 200
     result = response.json()
 
+    assert result["run_id"] == "run-uuid-5678"
     assert result["total_audited"] == 2
     assert result["inventory_storage_key"] == "inventory/uuid-1234/test_inventory.csv"
     assert "results" in result
     assert len(result["results"]) == 2
+    mock_db_save.assert_called_once()
 
 
 @patch("backend.api.main.s3_storage_service.upload_inventory_csv")
@@ -65,3 +68,22 @@ def test_match_inventory_endpoint_s3_failure(mock_s3_upload):
     assert response.status_code == 503
     detail = response.json()["detail"]
     assert "Inventory storage service is unavailable" in detail
+
+
+@patch("backend.api.main.dynamodb_storage_service.save_audit_run")
+@patch("backend.api.main.s3_storage_service.upload_inventory_csv")
+def test_match_inventory_endpoint_dynamodb_failure(mock_s3_upload, mock_db_save):
+    mock_s3_upload.return_value = "inventory/uuid-1234/test_inventory.csv"
+    mock_db_save.side_effect = RuntimeError("RECLARO_DYNAMODB_TABLE environment variable is not configured.")
+
+    recalls_res = client.get("/api/recalls?limit=1")
+    recall_id = recalls_res.json()["recalls"][0]["recall_id"]
+
+    csv_data = "inventory_id,manufacturer,product_name\nINV-1,Medtronic,Pump\n"
+    files = {"file": ("test_inventory.csv", csv_data, "text/csv")}
+    data = {"recall_id": recall_id}
+
+    response = client.post("/api/match", data=data, files=files)
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert "Audit storage service is unavailable" in detail
