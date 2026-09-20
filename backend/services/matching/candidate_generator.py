@@ -84,23 +84,14 @@ class SignalGenerator:
                         signals.append("EXACT_LOT_MATCH")
                         break
 
-        item_sn = TextNormalizer.normalize_code(item.serial_number)
-
-        if item_sn and recall.serial_ranges:
-            # ALL_SERIALS is recall scope, not an item-level match.
-            # Do NOT emit it as a matching signal.
-            if "ALL_SERIALS" not in recall.serial_ranges:
-                for r_sn in recall.serial_ranges:
-                    if item_sn == TextNormalizer.normalize_code(r_sn):
-                        signals.append("EXACT_SERIAL_MATCH")
-                        break
-
-        # 6. Serial Match
+        # 5. Serial Match
         item_sn = TextNormalizer.normalize_code(item.serial_number)
 
         if item_sn and recall.serial_ranges:
             if "ALL_SERIALS" in recall.serial_ranges:
-                signals.append("SERIAL_MATCH_ALL")
+                # Recall scope is unrestricted — the inventory serial falls within
+                # scope but this is NOT an exact serial-value match.
+                signals.append("SERIAL_SCOPE_ALL")
             else:
                 for r_sn in recall.serial_ranges:
                     if item_sn == TextNormalizer.normalize_code(r_sn):

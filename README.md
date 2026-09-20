@@ -4,7 +4,7 @@
 
 Hospitals receive medical-device recall notices, but their inventory systems often contain inconsistent manufacturer names, product descriptions, model values, catalog numbers, and identifiers. Reclaro connects live openFDA recall data with hospital inventory CSVs and determines which inventory records have sufficient evidence to fall within the recall scope.
 
-Reclaro is an engineering system and prototype. openFDA data should not be treated as a substitute for official manufacturer recall notices or clinical and regulatory decision-making.
+Reclaro is an engineering prototype. openFDA data should not be treated as a substitute for official manufacturer recall notices or clinical and regulatory decision-making.
 
 ---
 
@@ -12,7 +12,7 @@ Reclaro is an engineering system and prototype. openFDA data should not be treat
 
 The core technical principle of Reclaro is:
 
-> **"AI proposes. Deterministic evidence decides."**
+> **"Bedrock proposes candidates; deterministic verification establishes confirmation."**
 
 While generative AI is effective at handling messy terminology, acronyms, and ambiguous trade names, clinical inventory decisions demand verifiable proof. In Reclaro:
 
@@ -27,7 +27,7 @@ While generative AI is effective at handling messy terminology, acronyms, and am
    - **NOT_AFFECTED:** Available evidence does not support inclusion.
 7. **Evidence & Audit Persistence:** Every audit run is saved with its raw inventory artifact stored in Amazon S3 and structured run metadata and item records persisted in Amazon DynamoDB.
 
-**AI boundary:** AI-generated candidate evidence can help surface uncertain records into `NEEDS_REVIEW` so they are not silently missed, but AI candidate evidence alone can **never** produce a `CONFIRMED` status.
+**AI boundary:** Bedrock proposes candidates; deterministic verification establishes confirmation. AI candidate evidence can help surface uncertain records into `NEEDS_REVIEW` so they are not silently missed, but AI candidate evidence alone can **never** produce a `CONFIRMED` status.
 
 ---
 
@@ -89,7 +89,7 @@ FDA Recall Notice (openFDA)      Hospital Inventory CSV
 
 ---
 
-### Hospital Inventory CSV Format
+## Hospital Inventory CSV Format
 
 Reclaro accepts standard hospital inventory CSV files. The parsing engine maps the following columns:
 
@@ -111,16 +111,16 @@ Synthetic demonstration datasets are provided in [`data/synthetic_inventory/`](d
 
 ---
 
-## AWS Services
+## AWS Services Actually Used
 
 | AWS Service | Actual role in Reclaro |
 |---|---|
-| **AWS Amplify Hosting** | Hosts the React frontend Single Page Application and manages routing rules |
-| **Amazon API Gateway** | Exposes the backend HTTP API (`/api/recalls`, `/api/match`, `/api/audits`) |
-| **AWS Lambda** | Runs the serverless FastAPI backend, normalization engine, and verification rules |
-| **Amazon Bedrock** | Generates candidate match signals for ambiguous inventory records |
-| **Amazon S3** | Stores uploaded hospital inventory CSV files as immutable audit artifacts |
-| **Amazon DynamoDB** | Persists audit run metadata, per-item diagnostic records, and indexes history via `AuditRunIndex` GSI |
+| **AWS Amplify Hosting** | Hosts the React Single Page Application and manages routing and rewrite rules to API Gateway |
+| **Amazon API Gateway** | Exposes the HTTP API (`/api/recalls`, `/api/match`, `/api/audits`, `/api/audits/{run_id}`) |
+| **AWS Lambda** | Runs the serverless FastAPI backend, normalization engine, candidate generator, and verification rules |
+| **Amazon Bedrock** | Invokes Claude 3.5 Sonnet to propose candidates for ambiguous records that resist exact string matching |
+| **Amazon S3** | Stores uploaded hospital inventory CSV files as immutable audit artifacts (`s3_storage.py`) |
+| **Amazon DynamoDB** | Persists audit run metadata, per-item diagnostic records, and indexes run history via `AuditRunIndex` GSI (`dynamodb_storage.py`) |
 
 ---
 
@@ -131,35 +131,49 @@ Reclaro enforces strict hierarchical verification rules:
 * **CONFIRMED:** Requires deterministic manufacturer match **AND** an exact identifier match (`EXACT_UDI_MATCH`, `EXACT_CATALOG_MATCH`, or `EXACT_MODEL_MATCH`) **AND** verified scope bounds:
   - If the recall restricts lots, the lot number must match or the recall must apply to all lots (`ALL_LOTS`).
   - If the recall restricts serials, the serial number must match or the recall must apply to all serials (`ALL_SERIALS`).
-  - If the recall specifies a distribution cutoff (e.g. distributed prior to a date), the inventory item must have a verified distribution date before that cutoff.
-* **NEEDS_REVIEW:** Triggered when meaningful candidate evidence exists (e.g. manufacturer matches and model resembles recall, product family token overlap, or Bedrock proposed candidate signals), but deterministic identifier or scope proof is incomplete (such as a missing lot number or missing distribution date).
+  - If the recall specifies a distribution cutoff date (e.g., distributed prior to a date), the inventory item must possess a verified distribution date before that cutoff.
+* **NEEDS_REVIEW:** Triggered when meaningful candidate evidence exists (e.g., manufacturer matches and model resembles recall, product family token overlap, or Bedrock proposed candidate signals), but deterministic identifier or scope proof is incomplete (such as a missing lot number or missing distribution date).
 * **NOT_AFFECTED:** Assigned when available inventory fields do not match the recall specifications. This represents a screening outcome based on provided data, not a clinical guarantee that the device is free from defect or excluded from other recalls.
 
 ---
 
-## Benchmark
+## Evidence & Audit History
+
+Every audit execution generates a traceable, immutable audit record:
+- **Raw Artifact:** The original uploaded CSV is written to Amazon S3 with SHA-256 hash tracking.
+- **Run Metadata:** Total items audited, counts of `CONFIRMED`, `NEEDS_REVIEW`, and `NOT_AFFECTED` stored in DynamoDB under `RUN#<run_id>`.
+- **Item Diagnostics:** Each inventory record's matched signals, extracted recall scope, matched rule, and recommended biomedical engineering action are persisted under `ITEM#<run_id>#<inventory_id>`.
+- **Queryable History:** The DynamoDB Global Secondary Index `AuditRunIndex` enables immediate querying of all past audit runs for compliance review without re-executing matching.
+
+---
+
+## Engineering Benchmark
 
 Reclaro includes an automated engineering benchmark (`benchmarks/reclaro_benchmark.py`) evaluated against a controlled 30-case dataset (`benchmarks/ground_truth.csv`):
 
 * **Total cases:** 30
-* **Ground Truth AFFECTED:** 24
-* **Ground Truth NOT_AFFECTED:** 6
+* **Ground Truth AFFECTED:** 23
+* **Ground Truth NOT_AFFECTED:** 7
 
 ### Comparative Results
 
 | Metric | Naive Exact-String Baseline | Reclaro |
 |---|---|---|
-| **True Positives (TP)** | 19 | 22 |
-| **False Positives (FP)** | 0 | 0 |
-| **False Negatives (FN)** | 5 | 2 *(both escalated to NEEDS_REVIEW)* |
+| **True Positives (TP, strict confirmed)** | 18 | 21 |
+| **False Positives (FP)** | 1 | 1 *(B15 catalog collision limitation)* |
+| **False Negatives (FN, strict)** | 5 *(all silent NOT_AFFECTED)* | 2 *(both escalated to NEEDS_REVIEW)* |
 | **True Negatives (TN)** | 6 | 6 |
-| **Strict Precision** | 1.000 | 1.000 |
-| **Strict Recall** | 0.792 | 0.917 |
-| **False Positive Rate (FPR)** | 0.000 | 0.000 |
+| **Strict Precision** | 0.947 (18 / 19) | 0.955 (21 / 22) |
+| **Strict Recall** | 0.783 (18 / 23) | 0.913 (21 / 23) |
+| **False Positive Rate (FPR)** | 0.143 (1 / 7) | 0.143 (1 / 7) |
 | **Review Rate** | 0.000 | 0.067 (2 / 30 cases) |
-| **Screened Detection Coverage** | 0.792 (19 / 24) | 1.000 (24 / 24) |
+| **Screened Detection Coverage** | 0.783 (18 / 23) | 1.000 (23 / 23) |
 
-*Note on metrics: "Screened Detection Coverage" measures the proportion of ground-truth affected items surfaced by either confirmed match or review escalation `(TP + NEEDS_REVIEW) / Total AFFECTED`. It is an operational screening metric, distinct from strict confirmation recall. This benchmark evaluates matching mechanics on synthetic data, not clinical safety.*
+*Metric Notes:*
+- **Strict Recall** measures deterministically confirmed matches against ground-truth affected items `TP / (TP + FN)`. It is strictly distinct from overall accuracy.
+- **Screened Detection Coverage** measures the proportion of ground-truth affected items surfaced by either confirmed match or review escalation: `(TP + NEEDS_REVIEW) / Total AFFECTED`. Under Reclaro, 100% (23/23) of affected items were surfaced rather than silently dropped.
+- **B15 Catalog Collision:** Case B15 represents an item from the same manufacturer where catalog numbers collide across distinct product families. Because Reclaro enforces identifier matching without a separate heuristic product-family exclusion gate, B15 triggers CONFIRMED and is correctly counted as a False Positive (FPR = 0.143).
+- **Engineering benchmark notice:** This benchmark evaluates string-matching and rule-verification mechanics on synthetic test data. It does NOT constitute clinical evidence or safety validation.
 
 ---
 
@@ -206,7 +220,7 @@ reclaro/
 │   │   └── verification/
 │   │       └── verifier.py             # Authoritative deterministic verification engine
 │   ├── aws_handler.py                  # Mangum handler for AWS Lambda
-│   └── tests/                          # Pytest unit & regression test suite (33 tests)
+│   └── tests/                          # Pytest test suite (46 unit & adversarial tests)
 ├── benchmarks/
 │   ├── ground_truth.csv                # 30 controlled evaluation test cases
 │   ├── reclaro_benchmark.py            # Local engineering benchmark script
@@ -269,8 +283,8 @@ The frontend will run at `http://localhost:5173`.
 ### 3. Running Tests & Validation
 
 ```bash
-# Run backend pytest suite (33 tests)
-py -3.14 -m pytest backend/tests -q
+# Run backend pytest suite (46 tests)
+py -3.14 -m pytest backend/tests -v
 
 # Run benchmark script
 py -3.14 benchmarks/reclaro_benchmark.py
@@ -285,22 +299,22 @@ npm run build
 
 ---
 
-## Deployment
+## Deployment & Demo Information
 
-The backend serverless infrastructure is configured via AWS SAM ([`template.yaml`](template.yaml)):
-
-- **API Gateway:** Amazon API Gateway HTTP API configured with proxy routes to Lambda
-- **Lambda:** AWS Lambda (Python 3.14 runtime) running FastAPI via Mangum serverless adapter
-- **S3:** Encrypted bucket with public access blocked (`ReclaroInventoryBucket`)
-- **DynamoDB:** Pay-per-request table with Point-in-Time Recovery and GSI (`ReclaroAuditTable`, `AuditRunIndex`)
-
-Frontend is configured for deployment on **AWS Amplify Hosting**.
+- **Backend:** Configured as a serverless application via AWS SAM ([`template.yaml`](template.yaml)):
+  - **Amazon API Gateway:** HTTP API with proxy routing to Lambda.
+  - **AWS Lambda:** Python 3.14 runtime running FastAPI via Mangum.
+  - **Amazon S3:** Encrypted bucket with public access blocked (`ReclaroInventoryBucket`).
+  - **Amazon DynamoDB:** Pay-per-request table with Point-in-Time Recovery and GSI (`ReclaroAuditTable`, `AuditRunIndex`).
+- **Frontend:** Hosted on AWS Amplify Hosting with rewrite rules forwarding `/api/*` requests to the API Gateway endpoint.
+- **Live Demo Flow:** Biomedical engineers can use the web interface to select active recalls from openFDA, load synthetic hospital inventory data, execute matching audits, and inspect historical audit records stored in DynamoDB.
 
 ---
 
-## Limitations & Disclaimer
+## Limitations & Disclaimers
 
-* **Prototype System:** Reclaro is an engineering prototype developed for demonstration. It is not FDA-cleared, CE-marked, or clinically validated.
-* **openFDA API Data Quality:** openFDA recall records are public summaries and may have omissions or unstructured fields. They do not replace official manufacturer recall notifications.
-* **Screening vs. Clinical Decision:** A `CONFIRMED` result indicates a deterministic match against parsed notice parameters; it does not replace biomedical engineering quarantine procedures. A `NOT_AFFECTED` result indicates insufficient evidence in the provided fields, not a safety certification.
-* **Human-in-the-Loop:** Records flagged as `NEEDS_REVIEW` are intended for physical inspection and manual verification by clinical engineering staff.
+* **Engineering Prototype:** Reclaro is an engineering prototype developed for demonstration purposes. It is not FDA-cleared, CE-marked, or clinically validated.
+* **openFDA API Disclaimer:** openFDA recall records are public notification summaries. They may contain omissions, typographical variations, or unstructured free-form text. openFDA data should never replace direct manufacturer notifications, Urgent Medical Device Correction letters, or official regulatory communications.
+* **Catalog Collisions Across Families (B15 Limitation):** When manufacturers use overlapping or range-based catalog numbering across different product families without unique model/UDI distinction, catalog-based matching can produce a false positive. Reclaro prioritizes deterministic identifier matching, highlighting the necessity of biomedical engineering verification.
+* **Screening vs. Clinical Decision:** A `CONFIRMED` status indicates deterministic alignment between inventory attributes and parsed recall scope parameters. It does not replace physical biomedical device quarantine. A `NOT_AFFECTED` status indicates lack of evidence in the provided fields, not a certification of device safety.
+* **Human-in-the-Loop:** All items marked `NEEDS_REVIEW` are surfaced specifically for manual physical inspection by hospital clinical engineering staff.

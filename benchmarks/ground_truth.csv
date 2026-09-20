@@ -13,7 +13,7 @@ B11,Cardio Systems Corporation,Spectrum IQ Pump,,74021214,,SN-1011,AFFECTED,mfr_
 B12,Cardio Systems,Spectrum IQ Infusion Pump,Spectrum IQ,,,LOT-2023-A,AFFECTED,missing_catalog,No catalog - model EXACT match is sufficient for CONFIRMED with matching mfr
 B13,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021 215,,SN-1013,AFFECTED,catalog_format_diff,Catalog with internal space (74021 215) - Reclaro normalizes; baseline exact-match fails
 B14,Unknown Vendor,Generic Infusion Pump,,74021215,,SN-1014,NOT_AFFECTED,wrong_manufacturer,Unknown manufacturer - catalog matches but mfr gate blocks confirmation
-B15,Cardio Systems Inc.,Cardiac Monitor Pro,CM-300,74021217,,SN-1016,AFFECTED,catalog_collision_fp,Catalog 74021217 is in recall range and mfr matches; neither pipeline can distinguish product type from catalog alone - this is a known FP for any catalog-based system
+B15,Cardio Systems Inc.,Cardiac Monitor Pro,CM-300,74021217,,SN-1016,NOT_AFFECTED,catalog_collision_fp,Catalog 74021217 is in recall range and mfr matches, but the inventory product is outside the recalled product family; this is a deliberate false-positive collision case
 B16,Baxter International,Sigma Spectrum Infusion Pump,Sigma Spectrum,74021215,,SN-1017,NOT_AFFECTED,wrong_manufacturer,Different manufacturer (Baxter) - fails mfr gate regardless of catalog
 B17,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,LOT-OUTSIDE,,AFFECTED,lot_scope,Recall has ALL_LOTS scope so any lot qualifies; catalog confirms
 B18,Cardio Systems Inc.,Spectrum IQ Infusion Pump,Spectrum IQ,74021215,,SN-2999,AFFECTED,serial_scope,ALL_SERIALS scope; catalog confirms

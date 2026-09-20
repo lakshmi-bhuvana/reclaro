@@ -82,7 +82,7 @@ const SIGNAL_MAP: Record<string, SignalMeta> = {
     category: 'scope',
   },
 
-  SERIAL_MATCH_ALL: {
+  SERIAL_SCOPE_ALL: {
     label: 'Recall applies to all serials',
     category: 'scope',
   },
@@ -295,7 +295,7 @@ function buildDecisionExplanation(
       );
     }
 
-    if (signals.includes('SERIAL_MATCH_ALL')) {
+    if (signals.includes('SERIAL_SCOPE_ALL')) {
       parts.push(
         'Recall scope encompasses all serials',
       );
@@ -349,7 +349,7 @@ function buildDecisionExplanation(
 
     if (
       !signals.includes('EXACT_SERIAL_MATCH') &&
-      !signals.includes('SERIAL_MATCH_ALL')
+      !signals.includes('SERIAL_SCOPE_ALL')
     ) {
       missing.push('serial verification');
     }

@@ -75,7 +75,7 @@ class EvidenceBuilder:
 
             if (
                 "EXACT_SERIAL_MATCH" in signals
-                or "SERIAL_MATCH_ALL" in signals
+                or "SERIAL_SCOPE_ALL" in signals
             ):
                 matched_items.append(
                     f"Serial '{item.serial_number}'"
