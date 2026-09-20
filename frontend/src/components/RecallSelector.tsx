@@ -21,9 +21,34 @@ export const RecallSelector: React.FC<RecallSelectorProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchRecalls(query);
-      setRecalls(data.recalls);
+      // Fire the normal search and an optional recall-ID direct lookup in parallel.
+      // The ID lookup runs when the query resembles a recall ID (numeric string like
+      // "81158" or alphanumeric like "Z-1092-2024") — no spaces, no common words.
+      const looksLikeRecallId = query && /^[\w\-]+$/.test(query.trim()) && !/\s/.test(query.trim());
 
+      const [data, directMatch] = await Promise.allSettled([
+        fetchRecalls(query),
+        looksLikeRecallId ? fetchRecallDetail(query!.trim()) : Promise.reject('skip'),
+      ]);
+
+      let recalls: import('../types').Recall[] = [];
+
+      if (data.status === 'fulfilled') {
+        recalls = data.value.recalls;
+      } else {
+        setError((data as PromiseRejectedResult).reason?.message || 'Failed to load FDA recalls.');
+      }
+
+      // If direct ID lookup found something not already in the list, prepend it.
+      if (directMatch.status === 'fulfilled') {
+        const found = directMatch.value.recall;
+        const alreadyPresent = recalls.some((r) => r.recall_id === found.recall_id);
+        if (!alreadyPresent) {
+          recalls = [found, ...recalls];
+        }
+      }
+
+      setRecalls(recalls);
     } catch (err: any) {
       setError(err.message || 'Failed to load FDA recalls.');
     } finally {
@@ -39,6 +64,7 @@ export const RecallSelector: React.FC<RecallSelectorProps> = ({
     e.preventDefault();
     loadRecalls(searchQuery);
   };
+
 
   const handleSelect = async (recall: Recall) => {
     try {

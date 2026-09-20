@@ -81,3 +81,78 @@ def test_verifier_not_affected_on_unrelated_item():
     result = EvidenceBuilder.build_match_result(item, recall)
     assert result.status == MatchStatus.NOT_AFFECTED
     assert "NOT AFFECTED" in result.evidence
+
+
+def test_baxter_81158_missing_distribution_date_needs_review():
+    """A. Exact UDI + Mfr + Model but missing distribution date -> NEVER CONFIRMED, returns NEEDS_REVIEW."""
+    from datetime import date
+    recall = NormalizedRecall(
+        recall_id="81158",
+        manufacturer="baxter healthcare corporation",
+        models=["SPECTRUM IQ"],
+        udi_di=["00085412610900"],
+        serial_ranges=["ALL_SERIALS"],
+        distribution_date_before=date(2018, 7, 9),
+    )
+
+    item = InventoryItem(
+        inventory_id="INV-BAX-01",
+        manufacturer="Baxter Healthcare Corporation",
+        product_name="Spectrum IQ Infusion Pump",
+        model="SPECTRUM IQ",
+        udi_di="00085412610900",
+        distribution_date=None,
+    )
+
+    status = VerificationEngine.verify(item, recall)
+    assert status == MatchStatus.NEEDS_REVIEW
+
+
+def test_baxter_81158_valid_pre_cutoff_date_confirmed():
+    """B. Exact UDI + Mfr + Model and distribution_date before cutoff (2018-06-15 < 2018-07-09) -> CONFIRMED."""
+    from datetime import date
+    recall = NormalizedRecall(
+        recall_id="81158",
+        manufacturer="baxter healthcare corporation",
+        models=["SPECTRUM IQ"],
+        udi_di=["00085412610900"],
+        serial_ranges=["ALL_SERIALS"],
+        distribution_date_before=date(2018, 7, 9),
+    )
+
+    item = InventoryItem(
+        inventory_id="INV-BAX-02",
+        manufacturer="Baxter Healthcare Corporation",
+        product_name="Spectrum IQ Infusion Pump",
+        model="SPECTRUM IQ",
+        udi_di="00085412610900",
+        distribution_date=date(2018, 6, 15),
+    )
+
+    status = VerificationEngine.verify(item, recall)
+    assert status == MatchStatus.CONFIRMED
+
+
+def test_baxter_81158_post_cutoff_date_not_confirmed():
+    """C. Exact UDI + Mfr + Model but distribution_date on/after cutoff (2018-07-20 >= 2018-07-09) -> NOT CONFIRMED."""
+    from datetime import date
+    recall = NormalizedRecall(
+        recall_id="81158",
+        manufacturer="baxter healthcare corporation",
+        models=["SPECTRUM IQ"],
+        udi_di=["00085412610900"],
+        serial_ranges=["ALL_SERIALS"],
+        distribution_date_before=date(2018, 7, 9),
+    )
+
+    item = InventoryItem(
+        inventory_id="INV-BAX-03",
+        manufacturer="Baxter Healthcare Corporation",
+        product_name="Spectrum IQ Infusion Pump",
+        model="SPECTRUM IQ",
+        udi_di="00085412610900",
+        distribution_date=date(2018, 7, 20),
+    )
+
+    status = VerificationEngine.verify(item, recall)
+    assert status != MatchStatus.CONFIRMED

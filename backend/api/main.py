@@ -1,6 +1,7 @@
 import csv
 import io
 import logging
+from datetime import datetime, date
 from typing import List, Optional
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,6 +130,14 @@ async def match_inventory(
         except ValueError:
             qty = 1
 
+        dist_date = None
+        raw_dist_date = clean_row.get("distribution_date")
+        if raw_dist_date:
+            try:
+                dist_date = datetime.strptime(raw_dist_date.strip(), "%Y-%m-%d").date()
+            except ValueError:
+                dist_date = None
+
         item = InventoryItem(
             inventory_id=inv_id,
             manufacturer=mfr,
@@ -138,6 +147,7 @@ async def match_inventory(
             udi_di=clean_row.get("udi_di") or clean_row.get("udi"),
             lot_number=clean_row.get("lot_number") or clean_row.get("lot"),
             serial_number=clean_row.get("serial_number") or clean_row.get("serial") or clean_row.get("sn"),
+            distribution_date=dist_date,
             quantity=qty,
             location=clean_row.get("location") or clean_row.get("department"),
         )
@@ -200,3 +210,37 @@ async def match_inventory(
         inventory_storage_key=inventory_storage_key,
         results=results,
     )
+
+
+@app.get("/api/audits")
+async def list_audit_runs(limit: int = Query(20, ge=1, le=50)):
+    """List recent completed recall audit runs from DynamoDB (most recent first)."""
+    try:
+        runs = dynamodb_storage_service.list_audit_runs(limit=limit)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to list audit runs: {e}")
+        raise HTTPException(status_code=503, detail="Audit history is currently unavailable.")
+    return {"total": len(runs), "runs": runs}
+
+
+@app.get("/api/audits/{run_id}")
+async def get_audit_run(run_id: str):
+    """Return full audit run metadata and all item-level results for a specific run_id."""
+    try:
+        meta, items = dynamodb_storage_service.get_audit_run(run_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to fetch audit run {run_id}: {e}")
+        raise HTTPException(status_code=503, detail="Audit history is currently unavailable.")
+
+    if meta is None:
+        raise HTTPException(status_code=404, detail=f"Audit run '{run_id}' not found.")
+
+    return {
+        "run": meta,
+        "results": items,
+    }
+

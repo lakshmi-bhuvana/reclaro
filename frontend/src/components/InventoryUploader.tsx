@@ -78,14 +78,16 @@ export const InventoryUploader: React.FC<InventoryUploaderProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLoadSample}
-          className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition-colors flex items-center gap-1.5 font-medium"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Load Synthetic Demo CSV
-        </button>
+        {typeof window !== 'undefined' && window.location.search.includes('demo=true') && (
+          <button
+            type="button"
+            onClick={handleLoadSample}
+            className="text-[11px] px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700 transition-colors flex items-center gap-1 font-mono"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Load Sample CSV
+          </button>
+        )}
       </div>
 
       <div

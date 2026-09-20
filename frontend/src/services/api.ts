@@ -1,4 +1,4 @@
-import { RecallSearchResponse, MatchResponse, Recall, NormalizedRecall } from '../types';
+import { RecallSearchResponse, MatchResponse, Recall, NormalizedRecall, AuditRunListResponse, AuditDetail } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -41,3 +41,22 @@ export async function auditInventoryMatch(recallId: string, csvFile: File): Prom
 
   return res.json();
 }
+
+export async function fetchAuditRuns(limit = 20): Promise<AuditRunListResponse> {
+  const res = await fetch(`${API_BASE_URL}/audits?limit=${limit}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || 'Unable to load audit history.');
+  }
+  return res.json();
+}
+
+export async function fetchAuditDetail(runId: string): Promise<AuditDetail> {
+  const res = await fetch(`${API_BASE_URL}/audits/${encodeURIComponent(runId)}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || 'Unable to load audit detail.');
+  }
+  return res.json();
+}
+

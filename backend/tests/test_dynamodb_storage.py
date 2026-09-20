@@ -1,5 +1,6 @@
 import pytest
 import uuid
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 from backend.models.schemas import (
     Recall,
@@ -8,7 +9,7 @@ from backend.models.schemas import (
     MatchResult,
     MatchStatus,
 )
-from backend.services.storage.dynamodb_storage import DynamoDBStorageService
+from backend.services.storage.dynamodb_storage import DynamoDBStorageService, serialize_for_dynamodb
 
 
 @pytest.fixture
@@ -138,3 +139,132 @@ def test_save_audit_run_writes_meta_and_item_records(mock_boto_resource, sample_
     assert inv_1001["status"] == "CONFIRMED"
     assert inv_1001["inventory_item"]["manufacturer"] == "Medtronic Inc."
     assert "MANUFACTURER_MATCH" in inv_1001["signals"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Date serialization tests — guards against the 81158 live deployment bug.
+# DynamoDB rejected datetime.date objects; this verifies they become ISO strings.
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_serialize_for_dynamodb_converts_date_to_iso_string():
+    """serialize_for_dynamodb must convert datetime.date to ISO-8601 string."""
+    assert serialize_for_dynamodb(date(2018, 7, 9)) == "2018-07-09"
+
+
+def test_serialize_for_dynamodb_converts_datetime_to_iso_string():
+    """serialize_for_dynamodb must convert datetime.datetime to ISO-8601 string."""
+    result = serialize_for_dynamodb(datetime(2024, 1, 15, 10, 30, 0))
+    assert result == "2024-01-15T10:30:00"
+
+
+def test_serialize_for_dynamodb_recursively_handles_nested_dates():
+    """serialize_for_dynamodb must recurse into dicts and lists containing date values."""
+    val = {
+        "distribution_date_before": date(2018, 7, 9),
+        "nested": {
+            "items": [date(2020, 1, 1), None, "already-a-string"],
+            "count": 3,
+        },
+    }
+    result = serialize_for_dynamodb(val)
+    assert result["distribution_date_before"] == "2018-07-09"
+    assert result["nested"]["items"] == ["2020-01-01", None, "already-a-string"]
+    assert result["nested"]["count"] == 3
+
+
+@patch("boto3.resource")
+def test_save_audit_run_with_distribution_date_fields_does_not_raise(mock_boto_resource):
+    """
+    Regression test for the live deployment bug on recall 81158:
+    POST /api/match was failing with:
+        'Unsupported type "<class 'datetime.date'>" for value "2018-07-09"'
+
+    Proves save_audit_run serializes NormalizedRecall.distribution_date_before
+    and InventoryItem.distribution_date to ISO-8601 strings before DynamoDB write.
+    """
+    recall = Recall(
+        recall_id="81158",
+        recalling_firm="Baxter Healthcare Corporation",
+        product_description="SPECTRUM IQ Infusion System",
+        classification="Class II",
+    )
+    normalized_recall = NormalizedRecall(
+        recall_id="81158",
+        manufacturer="baxter",
+        udi_di=["00085412610900"],
+        serial_ranges=["ALL_SERIALS"],
+        distribution_date_before=date(2018, 7, 9),
+    )
+    items = [
+        InventoryItem(
+            inventory_id="INV-BAXTER-001",
+            manufacturer="Baxter Healthcare Corporation",
+            product_name="SPECTRUM IQ",
+            udi_di="00085412610900",
+            distribution_date=date(2018, 6, 15),
+        ),
+        InventoryItem(
+            inventory_id="INV-BAXTER-002",
+            manufacturer="Baxter Healthcare Corporation",
+            product_name="SPECTRUM IQ",
+            udi_di="00085412610900",
+            distribution_date=None,
+        ),
+    ]
+    results = [
+        MatchResult(
+            inventory_id="INV-BAXTER-001",
+            recall_id="81158",
+            status=MatchStatus.CONFIRMED,
+            signals=["MANUFACTURER_MATCH", "EXACT_UDI_MATCH", "SERIAL_MATCH_ALL"],
+            evidence="CONFIRMED: UDI and distribution date within recall scope.",
+            recommended_action="Quarantine device immediately.",
+        ),
+        MatchResult(
+            inventory_id="INV-BAXTER-002",
+            recall_id="81158",
+            status=MatchStatus.NEEDS_REVIEW,
+            signals=["MANUFACTURER_MATCH", "EXACT_UDI_MATCH", "SERIAL_MATCH_ALL"],
+            evidence="NEEDS REVIEW: Distribution date missing.",
+            recommended_action="Verify distribution date with procurement records.",
+        ),
+    ]
+
+    mock_batch = MagicMock()
+    mock_batch_ctx = MagicMock()
+    mock_batch_ctx.__enter__.return_value = mock_batch
+    mock_table = MagicMock()
+    mock_table.batch_writer.return_value = mock_batch_ctx
+    mock_boto_resource.return_value.Table.return_value = mock_table
+
+    service = DynamoDBStorageService(table_name="reclaro-audit-table", region_name="us-east-1")
+
+    # Must not raise TypeError — that was the live bug
+    run_id = service.save_audit_run(
+        recall=recall,
+        normalized_recall=normalized_recall,
+        inventory_items=items,
+        match_results=results,
+        inventory_storage_key="inventory/test-81158/inventory.csv",
+        confirmed_count=1,
+        needs_review_count=1,
+        not_affected_count=0,
+    )
+
+    assert mock_batch.put_item.call_count == 3
+    written = [call.kwargs["Item"] for call in mock_batch.put_item.call_args_list]
+
+    # META: distribution_date_before must be string "2018-07-09", not a date object
+    meta = next(r for r in written if r["sk"] == "META")
+    nr_snap = meta["normalized_recall"]
+    assert isinstance(nr_snap["distribution_date_before"], str)
+    assert nr_snap["distribution_date_before"] == "2018-07-09"
+
+    # ITEM with distribution_date: must be string "2018-06-15"
+    item_001 = next(r for r in written if r["sk"] == "ITEM#INV-BAXTER-001")
+    assert isinstance(item_001["inventory_item"]["distribution_date"], str)
+    assert item_001["inventory_item"]["distribution_date"] == "2018-06-15"
+
+    # ITEM with None distribution_date: must remain None (not crash)
+    item_002 = next(r for r in written if r["sk"] == "ITEM#INV-BAXTER-002")
+    assert item_002["inventory_item"]["distribution_date"] is None

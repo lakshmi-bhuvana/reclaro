@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
-
+from datetime import date
 
 class MatchStatus(str, Enum):
     CONFIRMED = "CONFIRMED"
@@ -35,6 +35,11 @@ class NormalizedRecall(BaseModel):
     udi_di: List[str] = Field(default_factory=list)
     lot_ranges: List[str] = Field(default_factory=list)
     serial_ranges: List[str] = Field(default_factory=list)
+
+    # Conditional distribution scope, when stated by FDA.
+    # Example: "All Serial Numbers distributed prior to 07/09/2018"
+    distribution_date_before: Optional[date] = None
+
     action: Optional[str] = None
     risk_class: Optional[str] = None
 
@@ -50,9 +55,14 @@ class InventoryItem(BaseModel):
     udi_di: Optional[str] = Field(None, description="Unique Device Identifier - Device Identifier component")
     lot_number: Optional[str] = Field(None, description="Batch or lot number")
     serial_number: Optional[str] = Field(None, description="Individual unit serial number")
+
+    distribution_date: Optional[date] = Field(
+        None,
+        description="Date the inventory item was distributed or supplied",
+    )
+
     quantity: Optional[int] = Field(1, description="Quantity in stock")
     location: Optional[str] = Field(None, description="Physical hospital location or department")
-
 
 class MatchResult(BaseModel):
     """Outcome of matching an InventoryItem against a NormalizedRecall"""

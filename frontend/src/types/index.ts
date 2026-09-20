@@ -54,11 +54,50 @@ export interface RecallSearchResponse {
 }
 
 export interface MatchResponse {
+  run_id?: string;
   recall: Recall;
   normalized_recall: NormalizedRecall;
   total_audited: number;
   confirmed_count: number;
   needs_review_count: number;
   not_affected_count: number;
+  inventory_storage_key?: string;
   results: MatchResult[];
 }
+
+// ── Audit History types ───────────────────────────────────────────────────────
+
+export interface AuditRun {
+  run_id: string;
+  recall_id: string;
+  recalling_firm: string;
+  created_at: string;
+  total_audited: number;
+  confirmed_count: number;
+  needs_review_count: number;
+  not_affected_count: number;
+  inventory_storage_key?: string;
+}
+
+export interface AuditRunListResponse {
+  total: number;
+  runs: AuditRun[];
+}
+
+export interface AuditItemResult {
+  run_id: string;
+  inventory_id: string;
+  recall_id: string;
+  status: MatchStatus;
+  signals: string[];
+  evidence: string;
+  recommended_action: string;
+  inventory_item?: InventoryItem;
+  created_at?: string;
+}
+
+export interface AuditDetail {
+  run: AuditRun;
+  results: AuditItemResult[];
+}
+

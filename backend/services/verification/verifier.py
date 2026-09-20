@@ -75,6 +75,14 @@ class VerificationEngine:
             serial_matched or serial_scope_unrestricted
         )
 
+        distribution_scope_satisfied = True
+
+        if recall.distribution_date_before is not None:
+            distribution_scope_satisfied = (
+                item.distribution_date is not None
+                and item.distribution_date < recall.distribution_date_before
+            )
+
         # ---------------------------------------------------------
         # Fuzzy / semantic candidate signals
         # ---------------------------------------------------------
@@ -89,7 +97,7 @@ class VerificationEngine:
         # Deterministic Manufacturer must match.
         # Deterministic identifier (exact UDI, exact catalog, exact model)
         # must match.
-        # Lot/serial scope must be satisfied.
+        # Lot/serial/distribution scope must be satisfied.
         #
         # AI candidate signals alone or combined can NEVER produce CONFIRMED.
         # ---------------------------------------------------------
@@ -99,6 +107,7 @@ class VerificationEngine:
             scope_satisfied = (
                 lot_scope_satisfied
                 and serial_scope_satisfied
+                and distribution_scope_satisfied
             )
 
             if scope_satisfied:
@@ -127,9 +136,11 @@ class VerificationEngine:
         any_model_candidate = model_matched or fuzzy_model or ai_model_candidate
         any_catalog_candidate = catalog_matched or fuzzy_catalog or ai_catalog_candidate
         any_family_candidate = family_matched or ai_family_candidate
+        any_udi_candidate = udi_matched
 
         if any_mfr_candidate and (
-            any_model_candidate
+            any_udi_candidate
+            or any_model_candidate
             or any_catalog_candidate
             or any_family_candidate
         ):

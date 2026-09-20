@@ -1,5 +1,6 @@
 import re
-from typing import List
+from datetime import date, datetime
+from typing import List, Optional
 
 from backend.models.schemas import Recall, NormalizedRecall
 from backend.services.normalization.normalizer import TextNormalizer
@@ -38,7 +39,9 @@ class RecallParser:
         serial_ranges = RecallParser._extract_serials(
             recall.code_info or ""
         )
-
+        distribution_date_before = RecallParser._extract_distribution_date_before(
+            recall.code_info or ""
+        )
         # Extract product family keywords / names
         product_families = RecallParser._extract_product_families(
             recall.product_description or ""
@@ -53,10 +56,10 @@ class RecallParser:
             udi_di=udi_di,
             lot_ranges=lot_ranges,
             serial_ranges=serial_ranges,
+            distribution_date_before=distribution_date_before,
             action=recall.action,
             risk_class=recall.classification or "Class II",
         )
-
     @staticmethod
     def _extract_catalog_numbers(text: str) -> List[str]:
         catalogs = set()
@@ -324,7 +327,37 @@ class RecallParser:
             serials.add("ALL_SERIALS")
 
         return sorted(serials)
+    @staticmethod
+    def _extract_distribution_date_before(code_info: str) -> Optional[date]:
+        """
+        Extract a distribution-date upper bound from FDA recall scope text.
 
+        Example:
+            "All Serial Numbers distributed prior to 07/09/2018"
+
+        means:
+            inventory distribution_date < 2018-07-09
+        """
+        if not code_info:
+            return None
+
+        match = re.search(
+            r"distributed\s+(?:prior\s+to|before)\s+"
+            r"(\d{1,2}/\d{1,2}/\d{4})",
+            code_info,
+            re.IGNORECASE,
+        )
+
+        if not match:
+            return None
+
+        try:
+            return datetime.strptime(
+                match.group(1),
+                "%m/%d/%Y",
+            ).date()
+        except ValueError:
+            return None
     @staticmethod
     def _extract_product_families(desc: str) -> List[str]:
         """

@@ -24,3 +24,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+*.mjs.timestamp-*
+*.zip
+frontend/*.zip
